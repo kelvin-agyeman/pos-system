@@ -1,0 +1,769 @@
+openapi: 3.0.0
+info:
+  title: VIN POS System API
+  version: 1.0.0
+  description: "Production-ready RESTful API for the VIN Point of Sale (POS) System, featuring cookie-based JWT authentication, role-based access control, inventory management, customer loyalty tracking, atomic sales processing, and Paystack payment verification."
+  contact:
+    name: API Support
+servers:
+  - url: "http://localhost:3000/api/v1"
+    description: Development Server
+
+# ---------------------------------------------------------
+# SECURITY CONFIGURATION (Cookie Auth)
+# ---------------------------------------------------------
+security:
+  - cookieAuth: []
+
+paths:
+  # ==========================================
+  # AUTH ROUTES
+  # ==========================================
+  /auth/register:
+    post:
+      summary: Register User
+      security: [] # Unprotected route
+      tags:
+        - Auth Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fullName
+                - email
+                - username
+                - password
+              properties:
+                fullName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum:
+                    - ADMIN
+                    - CASHIER
+              example:
+                fullName: "Kwame Mensah"
+                email: "kwame@example.com"
+                username: "kwame12"
+                password: "Secret123!"
+                role: "CASHIER"
+      responses:
+        "201":
+          description: Verification email sent
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Too many requests
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /auth/login:
+    post:
+      summary: Login User
+      security: []
+      tags:
+        - Auth Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              example:
+                username: "kwame12"
+                password: "Secret123!"
+      responses:
+        "200":
+          description: Login successful. Sets accessToken and refreshToken in cookies.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "423":
+          description: Account locked due to too many failed login attempts
+        "429":
+          description: Too many requests
+
+  /auth/logout:
+    delete:
+      summary: Logout User
+      tags:
+        - Auth Routes
+      responses:
+        "200":
+          description: Logged out successfully. Clears auth cookies.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/verify-email:
+    post:
+      summary: Verify Email
+      security: []
+      tags:
+        - Auth Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - verificationToken
+              properties:
+                email:
+                  type: string
+                  format: email
+                verificationToken:
+                  type: string
+              example:
+                email: "kwame@example.com"
+                verificationToken: "e5427fc949490274a8923324..."
+      responses:
+        "200":
+          description: Email verified successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /auth/resend-verification-email:
+    post:
+      summary: Resend Verification Email
+      security: []
+      tags:
+        - Auth Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+              example:
+                email: "kwame@example.com"
+      responses:
+        "200":
+          description: If this email is registered, a new verification link has been sent.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Too many email requests
+
+  /auth/forgot-password:
+    post:
+      summary: Forgot Password
+      security: []
+      tags:
+        - Auth Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+              example:
+                email: "kwame@example.com"
+      responses:
+        "200":
+          description: Please check your email for the reset link.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Too many email requests
+
+  /auth/reset-password:
+    post:
+      summary: Reset Password
+      security: []
+      tags:
+        - Auth Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - resetPasswordToken
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                resetPasswordToken:
+                  type: string
+                password:
+                  type: string
+              example:
+                email: "kwame@example.com"
+                resetPasswordToken: "5195dcfd3716076dcdd15dad74f14076946c..."
+                password: "NewSecret123!"
+      responses:
+        "200":
+          description: Password reset successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ==========================================
+  # USER ROUTES
+  # ==========================================
+  /users:
+    get:
+      summary: Get All Users
+      tags:
+        - User Routes
+      responses:
+        "200":
+          description: List of all users retrieved
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /users/current-user:
+    get:
+      summary: Get Current User
+      tags:
+        - User Routes
+      responses:
+        "200":
+          description: Current user data retrieved
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/reset-password:
+    patch:
+      summary: Update Current User Password
+      tags:
+        - User Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oldPassword
+                - newPassword
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+              example:
+                oldPassword: "Secret123!"
+                newPassword: "NewSecret123!"
+      responses:
+        "200":
+          description: Password updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      summary: Update Current User Password
+      tags:
+        - User Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oldPassword
+                - newPassword
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+              example:
+                oldPassword: "Secret123!"
+                newPassword: "NewSecret123!"
+      responses:
+        "200":
+          description: Password updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+        description: The unique ID of the user
+    patch:
+      summary: Update User
+      tags:
+        - User Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                username:
+                  type: string
+                role:
+                  type: string
+                  enum:
+                    - ADMIN
+                    - CASHIER
+              example:
+                fullName: "Ama Boateng"
+                username: "amaboateng"
+                role: "CASHIER"
+      responses:
+        "200":
+          description: User updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update User
+      tags:
+        - User Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                username:
+                  type: string
+                role:
+                  type: string
+                  enum:
+                    - ADMIN
+                    - CASHIER
+              example:
+                fullName: "Ama Boateng"
+                username: "amaboateng"
+                role: "CASHIER"
+      responses:
+        "200":
+          description: User updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete User
+      tags:
+        - User Routes
+      responses:
+        "200":
+          description: User deleted successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================
+  # CUSTOMER ROUTES
+  # ==========================================
+  /customers:
+    post:
+      summary: Register Customer
+      tags:
+        - Customer Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                fullName:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+              example:
+                fullName: "Kofi Owusu"
+                phone: "0241234567"
+                email: "kofi@example.com"
+      responses:
+        "201":
+          description: Customer registered successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      summary: Get All Customers
+      tags:
+        - Customer Routes
+      responses:
+        "200":
+          description: List of customers retrieved
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ==========================================
+  # PRODUCT ROUTES
+  # ==========================================
+  /products:
+    post:
+      summary: Create Product
+      tags:
+        - Product Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+                - quantity
+                - category
+              properties:
+                name:
+                  type: string
+                price:
+                  type: number
+                  format: float
+                quantity:
+                  type: integer
+                category:
+                  type: string
+              example:
+                name: "Espresso"
+                price: 2.5
+                quantity: 100
+                category: "Beverages"
+      responses:
+        "201":
+          description: Product created successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      summary: Get All Products
+      tags:
+        - Product Routes
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "coffee"
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "Beverages"
+        - name: minPrice
+          in: query
+          required: false
+          schema:
+            type: number
+          example: 1.5
+        - name: maxPrice
+          in: query
+          required: false
+          schema:
+            type: number
+          example: 5.0
+      responses:
+        "200":
+          description: List of products retrieved
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /products/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+        description: The unique ID of the product
+    get:
+      summary: Get Single Product
+      tags:
+        - Product Routes
+      responses:
+        "200":
+          description: Product details retrieved
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update Product
+      tags:
+        - Product Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                price:
+                  type: number
+                  format: float
+                quantity:
+                  type: integer
+                category:
+                  type: string
+              example:
+                price: 3.0
+                quantity: 90
+      responses:
+        "200":
+          description: Product updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update Product
+      tags:
+        - Product Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                price:
+                  type: number
+                  format: float
+                quantity:
+                  type: integer
+                category:
+                  type: string
+              example:
+                price: 3.0
+                quantity: 90
+      responses:
+        "200":
+          description: Product updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete Product
+      tags:
+        - Product Routes
+      responses:
+        "200":
+          description: Product deleted successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================
+  # SALE ROUTES
+  # ==========================================
+  /sales:
+    post:
+      summary: Create Sale
+      description: Creates a cash sale or verifies a Paystack payment when paymentReference is provided.
+      tags:
+        - Sale Routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - productId
+                      - quantity
+                    properties:
+                      productId:
+                        type: integer
+                      quantity:
+                        type: integer
+                cashGiven:
+                  type: number
+                  format: float
+                paymentMethod:
+                  type: string
+                  enum:
+                    - CASH
+                    - MOBILE_MONEY
+                    - CREDIT_CARD
+                  default: CASH
+                paymentReference:
+                  type: string
+                customerId:
+                  type: integer
+              example:
+                items:
+                  - productId: 1
+                    quantity: 2
+                  - productId: 5
+                    quantity: 1
+                cashGiven: 10.0
+                paymentMethod: "CASH"
+                customerId: 1
+      responses:
+        "201":
+          description: Sale created successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      summary: Get All Sales
+      tags:
+        - Sale Routes
+      responses:
+        "200":
+          description: List of all sales and total revenue retrieved
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sales/my-sales:
+    get:
+      summary: Get Cashier Sales
+      tags:
+        - Sale Routes
+      responses:
+        "200":
+          description: List of sales made by current user retrieved
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sales/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+        description: The unique ID of the sale
+    get:
+      summary: Get Sale By ID
+      tags:
+        - Sale Routes
+      responses:
+        "200":
+          description: Sale details retrieved
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ---------------------------------------------------------
+# REUSABLE COMPONENTS
+# ---------------------------------------------------------
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: accessToken
+      description: Access token stored in HttpOnly cookies. Swagger UI allows you to inject this for testing.
+
+  responses:
+    BadRequest:
+      description: Bad Request (Invalid Input)
+    Unauthorized:
+      description: Unauthorized (Missing or invalid token)
+    Forbidden:
+      description: Forbidden (User lacks required permissions)
+    NotFound:
+      description: Resource Not Found
+    ServerError:
+      description: Internal Server Error

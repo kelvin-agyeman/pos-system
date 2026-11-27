@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  CREDIT_CARD
+}
+
+enum Role {
+  ADMIN
+  CASHIER
+}
+
+model User {
+  id                               Int       @id @default(autoincrement())
+  fullName                         String?
+  username                         String    @unique
+  email                            String?   @unique
+  password                         String
+  role                             Role      @default(CASHIER)
+  
+  // Auth & Security Fields
+  emailVerified                    Boolean   @default(false)
+  verifiedAt                       DateTime?
+  verificationToken                String?
+  verificationTokenExpirationDate  DateTime?
+  lastVerificationEmailSent        DateTime?
+
+  resetPasswordToken               String?
+  resetPasswordTokenExpirationDate DateTime?
+  lastPasswordResetRequest         DateTime?
+  passwordChangedAt                DateTime?
+
+  failedLoginAttempts              Int       @default(0)
+  lockUntil                        DateTime?
+  lastLogin                        DateTime?
+  isActive                         Boolean   @default(true)
+  isDeleted                        Boolean   @default(false)
+
+  // Relationships
+  sales                            Sale[]
+  tokens                           Token[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Token {
+  id           Int      @id @default(autoincrement())
+  refreshToken String
+  ip           String?
+  userAgent    String?
+  isValid      Boolean  @default(true)
+  
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id            Int      @id @default(autoincrement())
+  fullName      String?
+  phone         String?  @unique
+  email         String?  @unique
+  loyaltyPoints Int      @default(0)
+  
+  // Relationships
+  sales         Sale[]
+
+//Timestamps
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Product {
+  id         Int         @id @default(autoincrement())
+  name       String
+  price      Float
+  quantity   Int         @default(0)
+  category   String
+  
+  // Relationships
+  salesItems SalesItem[]
+
+//Timestamps
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Sale {
+  id               Int           @id @default(autoincrement())
+  totalAmount      Float
+  paymentMethod    PaymentMethod @default(CASH)
+  cashGiven        Float?
+  change           Float?
+  paymentReference String?
+
+  // Relationships
+  userId           Int
+  user             User          @relation(fields: [userId], references: [id])
+  
+  customerId       Int?
+  customer         Customer?     @relation(fields: [customerId], references: [id])
+
+  salesItems       SalesItem[]
+
+  //Timestamps
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model SalesItem {
+  id        Int      @id @default(autoincrement())
+  quantity  Int
+  price     Float
+
+  // Relationships
+  saleId    Int
+  sale      Sale     @relation(fields: [saleId], references: [id])
+
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+
+//Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
