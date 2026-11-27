@@ -369,41 +369,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-    put:
-      summary: Update User
-      tags:
-        - User Routes
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                fullName:
-                  type: string
-                username:
-                  type: string
-                role:
-                  type: string
-                  enum:
-                    - ADMIN
-                    - CASHIER
-              example:
-                fullName: "Ama Boateng"
-                username: "amaboateng"
-                role: "CASHIER"
-      responses:
-        "200":
-          description: User updated successfully
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
     delete:
       summary: Delete User
       tags:
@@ -563,38 +528,6 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
     patch:
-      summary: Update Product
-      tags:
-        - Product Routes
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                price:
-                  type: number
-                  format: float
-                quantity:
-                  type: integer
-                category:
-                  type: string
-              example:
-                price: 3.0
-                quantity: 90
-      responses:
-        "200":
-          description: Product updated successfully
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-    put:
       summary: Update Product
       tags:
         - Product Routes
