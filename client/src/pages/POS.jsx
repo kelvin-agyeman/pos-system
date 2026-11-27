@@ -161,7 +161,7 @@ const POS = () => {
     // PAYSTACK FLOW
     const paystack = new PaystackPop();
     paystack.newTransaction({
-      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+      key: import.meta.env.PAYSTACK_PUBLIC_KEY,
       email: "customer@test.com",
       amount: total * 100,
       currency: "GHS",
