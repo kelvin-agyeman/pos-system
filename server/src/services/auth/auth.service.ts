@@ -44,7 +44,9 @@ export const registerUserService = async (
   }
 
   const verificationToken = crypto.randomBytes(40).toString("hex");
-  console.log("Email Verification Token:",verificationToken)
+  if (process.env.NODE_ENV === "development") {
+    console.log("Email Verification Token:", verificationToken);
+  }
   const oneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const hashedPassword = await hashPassword(password);
 
@@ -333,7 +335,9 @@ export const forgotPasswordService = async (
   }
 
   const resetPasswordToken = crypto.randomBytes(70).toString("hex");
-  console.log("Reset Password Token:", resetPasswordToken);
+  if (process.env.NODE_ENV === "development") {
+    console.log("Reset Password Token:", resetPasswordToken);
+  }
   const expirationDate = new Date(Date.now() + 60 * 60 * 1000);
 
   await prisma.user.update({
